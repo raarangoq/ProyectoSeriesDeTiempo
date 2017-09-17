@@ -17,6 +17,6 @@ source("R/prueba.R")
 
 
 hello <- function() {
-  x <- runif(1000)
+  x <- rnorm(1000)
   prueba(x)
 }
