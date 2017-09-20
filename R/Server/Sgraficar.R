@@ -1,6 +1,6 @@
 
 
-Sgraficar <- function(){
+Sgraficar <- function(input){
   if (length(file) > 0){
     plot(file$fila1, col = 'blue')
     lines(file$fila2, col = 'red')

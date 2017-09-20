@@ -1,6 +1,8 @@
 
 
 source("R/Server/Sarchivo.R")
+source("R/Server/Sgraficar.R")
+
 server <- function(input, output) {
 
   # UIarchivo
