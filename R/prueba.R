@@ -4,11 +4,12 @@ library(shiny)
 source("R/server.R")
 source("R/ui.R")
 
-arreglo <- c()
-file <- NULL
 
-prueba <- function(x){
-  arreglo <<- x
+file <- NULL
+columns <- NULL
+timeSerie <- NULL
+
+prueba <- function(){
   runApp(app)
 }
 

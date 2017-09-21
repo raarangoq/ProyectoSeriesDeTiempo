@@ -1,16 +1,13 @@
 
 
 Sgraficar <- function(input){
-  if (length(file) > 0){
-    plot(file$fila1, col = 'blue')
-    lines(file$fila2, col = 'red')
+  if (!is.null(timeSerie) && 
+      !is.null(input$column) &&
+      !is.null(input$start) &&
+      !is.null(input$startPeriod) &&
+      !is.null(input$frecuency)
+      ){
+    plot(timeSerie, col = 'blue')
   }
-  else{
-    hist(arreglo, breaks = input$obs,
-         col = 'darkgray', border = 'white', probability = TRUE,
-         main = "Histograma de probabilidad")
-    lines(density(arreglo), col = 'red')
-  }
-
   grid(col = 'black')
 }
