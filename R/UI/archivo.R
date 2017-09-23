@@ -1,13 +1,13 @@
 
 
-UIarchivo <- sidebarLayout(
-  sidebarPanel(
+UIarchivo <- sidebarPanel(
+  
     fileInput("data", "Carge archivo csv, valores separados por comas",
               accept = c(
                 "text/csv",
                 "text/comma-separated-values,text/plain",
                 ".csv", '.xls',
-                '.xlsx', '.txt'),
+                '.xlsx', '.txt', '.dat'),
               buttonLabel = "Subir archivo",
               placeholder = "Seleccione un archivo"
     ),
@@ -17,7 +17,8 @@ UIarchivo <- sidebarLayout(
                  choices = c("Coma" = ",",
                              "Punto y coma" = ";",
                              "Tabulador" = "\t",
-                             "Espacio" = " "),
+                             "Espacio" = " ",
+                             "Un dato por línea" = '\n'),
                  selected = ","),
     
     # Input: Select quotes ----
@@ -29,15 +30,14 @@ UIarchivo <- sidebarLayout(
     
     
     checkboxInput("header", "Header", TRUE),
+    
+    uiOutput("timeSeriesColumns"),
 
     numericInput('start', 'Inicio:', value = 1),
     numericInput('startPeriod', 'Periodo de inicio:', 1),
-    numericInput('frecuency', 'Frecuencia:', 1),
-    
-    uiOutput("timeSeriesColumns")
-
-  ),
-  mainPanel(
-    tableOutput("contents")
-  )
+    numericInput('frecuency', 'Frecuencia:', 1)
 )
+
+
+UItabla <- tableOutput("contents")
+

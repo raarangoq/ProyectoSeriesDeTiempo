@@ -1,1 +1,5 @@
-UIresumen <- verbatimTextOutput("summary")
+UIresumen <- {
+  verbatimTextOutput("summary")
+  }
+
+

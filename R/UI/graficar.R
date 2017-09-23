@@ -1,5 +1,5 @@
-UIgraficar <- sidebarLayout(
-  sidebarPanel(
-  ),
-  mainPanel(plotOutput("distPlot"))
-)
+UIgraficar <- {
+  checkboxInput("header", "Header", TRUE)
+  plotOutput("distPlot")
+}
+
