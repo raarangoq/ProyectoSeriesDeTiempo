@@ -9,68 +9,57 @@ server <- function(input, output) {
   # This is called whenever the inputs change. The output functions
   # defined below then use the value computed from this expression
   file <- reactive({
-    # input$data will be NULL initially. After the user selects
-    # and uploads a file, it will be a data frame with 'name',
-    # 'size', 'type', and 'datapath' columns. The 'datapath'
-    # column will contain the local filenames where the data can
-    # be found.
-    inFile <- input$data
     
-    if (is.null(inFile))
-      return(NULL)
-    
-    file1 <<- read.csv(inFile$datapath,
-                      header = input$header,
-                      sep = input$sep,
-                      quote = input$quote)
-    
-    columns <<- names(file1)
-    
-    
-    return (file1)
-  })
-  
-  timeSerie <- reactive({
-    if(!is.null(input$column)) {
-      series <- rep(0, length(input$column))
-    
-      for (i in 1:length(input$column)){
-      series[input$column[i]] <- ts(
-        data = file()[, input$column[1]], 
-        start = c(input$start, input$startPeriod), 
-        frequency = input$frecuency )
-      }
+    if(input$dataType == 'Aleatorios'){
+      file1 <- data.frame(rnorm(300))
+      return(file1)
+    }
+    else{
+      # input$data will be NULL initially. After the user selects
+      # and uploads a file, it will be a data frame with 'name',
+      # 'size', 'type', and 'datapath' columns. The 'datapath'
+      # column will contain the local filenames where the data can
+      # be found.
+      inFile <- input$data
       
-      return (series)
+      if (is.null(inFile))
+        return(NULL)
+  
+      file1 <<- read.csv(inFile$datapath,
+                        header = input$header,
+                        sep = input$sep,
+                        quote = input$quote)
+      
+      return (file1)
     }
   })
- 
+  
+  timeSerie <- function(column){
+    t <- ts(
+      data = file()[, column], 
+      start = c(input$start, input$startPeriod), 
+      frequency = input$frecuency )
+  }
+
   # UIarchivo
   output$contents <- renderTable({
     file()
-    #d()
   })
   
   output$timeSeriesColumns <- renderUI({
-    if(!is.null(names(file()))) 
-     #return(selectInput( "column", "Columna:", choices = names(file()) ))
-      selectizeInput('column', 'Columnas a graficar', choices = names(file()), multiple = TRUE)
+    file1 <- file()
+    if(!is.null(file1) && length(names(file1)) > 0) 
+        selectizeInput('column', 'Columnas a graficar', choices = names(file1), multiple = TRUE)
   })
+  
   
 
   # UIgraficar
   output$distPlot <- renderPlot({
-    #Sgraficar(input)
-    #if (!is.null(timeSerie())){
-    #  for(serie in timeSerie())
-    #    plot(serie, col = 'blue')
-    #}
+    colRandom = c("red", "blue", "black", "green", "orange", "purple", "brown", "pink")
     
     if(!is.null(input$column)) {
-      serie <- ts(
-        data = file()[, input$column[1]], 
-        start = c(input$start, input$startPeriod), 
-        frequency = input$frecuency )
+      serie <- timeSerie(input$column[1])
       
       minY <- min(file()[, input$column[1]])
       maxY <- max(file()[, input$column[1]])
@@ -82,23 +71,114 @@ server <- function(input, output) {
             maxY <- max(file()[, input$column[i]])
         }
       
-      print(minY)
-      print(maxY)
-      
-      plot(serie, col = 'blue', ylim = c(minY, maxY))
+      plot(serie, ylim = c(minY, maxY), col = colRandom[1], lwd = 2, main = "Time serie")
       
       if(length(input$column) > 1)
         for (i in 2:length(input$column)){
-          serie <- ts(
-            data = file()[, input$column[i]], 
-            start = c(input$start, input$startPeriod), 
-            frequency = input$frecuency )
-        lines(serie, col = 'blue')
+          serie <- timeSerie(input$column[i])
+        lines(serie, col = colRandom[i], lwd = 2)
         }
+      
+      legend( "topleft",                
+              input$column,             
+              lwd = c(2, 2),            
+              col = colRandom[1:length(input$column)],   
+              bty = "n")                
     }
     
     grid(col = 'black')
   })
+  
+  # UIestadisticos
+  
+  output$estatisticsColumnsSelect <- renderUI({
+    file1 <- file()
+    if(!is.null(file1) && length(names(file1)) > 0) 
+      selectizeInput('columnEstatistics', 'Columnas a graficar', choices = names(file1), multiple = FALSE)
+  })
+  
+  output$acf <- renderPlot({
+    if(!is.null(input$columnEstatistics)) 
+        acf(file()[, input$columnEstatistics], main = "ACF") 
+  })
+  
+  output$pacf <- renderPlot({
+    if(!is.null(input$columnEstatistics)) 
+      pacf(file()[, input$columnEstatistics], main = "Partial ACF") 
+  })
+
+  # UIdescomposicion
+  
+  output$descomposeColumnsSelect <- renderUI({
+    file1 <- file()
+    if(!is.null(file1) && length(names(file1)) > 0) 
+      selectizeInput('columnDescompose', 'Columnas a graficar', choices = names(file1), multiple = FALSE)
+  })
+  
+  output$descompose <- renderPlot({
+    if(!is.null(input$columnDescompose)){
+      yt = timeSerie(input$columnDescompose)
+      descom = decompose(yt, type = 'additive')
+      plot(descom)
+    } 
+  })
+  
+  # UITendencia
+  
+  output$regressionColumnsSelect <- renderUI({
+    file1 <- file()
+    if(!is.null(file1) && length(names(file1)) > 0) 
+      selectizeInput('columnRegresion', 'Columna a aplicar la regresión', choices = names(file1), multiple = FALSE)
+  })
+  
+  
+  output$regressionPlot <- renderPlot({
+    if(!is.null(input$columnRegresion)){
+      yt = timeSerie(input$columnRegresion)
+      
+      t <- seq(1:length(yt))    
+      
+      if(input$typeRegression == 'Lineal'){
+        m <- lm(formula = yt ~ t)  
+      }else if(input$typeRegression == 'Cuadrática'){
+        tt <- t*t               
+        m  <- lm(formula = yt ~ t + tt)     
+      }
+      else if(input$typeRegression == 'Cúbica'){
+        tt <- t*t 
+        ttt <- tt*t
+        m  <- lm(formula = yt ~ t + tt + ttt)     
+      }
+      
+      plot(t, yt, type = "o", lwd = 2)
+      lines(m$fitted.values, col = "red", lwd = 2)
+      legend("topleft",           
+            c("Real","Pronóstico"), 
+            lwd = c(2, 2),                      
+            col = c('black','red'),                 
+            bty = "n"
+      ) 
+      
+      output$regressionParameters <- renderPrint({
+        m
+      })
+      
+      output$residualPlot <- renderPlot({
+        par(mfrow=c(2,2))
+        options(repr.plot.width=10, repr.plot.height=6)
+        r = m$residuals
+        plot(t, r, type='b', ylab='', main="Residuales", col="red")
+        abline(h=0,lty=2)               
+        plot(density(r), xlab='x', main= 'Densidad residuales', col="red")
+        qqnorm(r)               
+        qqline(r, col=2)         
+        acf(r, ci.type="ma", 60) 
+      })
+      
+    }
+  })
+  
+  
 
   #UIresumen
   output$summary <- renderPrint({

@@ -11,8 +11,7 @@ ui <- fluidPage(
   # Sidebar layout with input and output definitions ----
   sidebarLayout(
     
-    UIarchivo
-    ,
+    UIarchivo,
     
     # Main panel for displaying outputs ----
     mainPanel(
@@ -21,6 +20,9 @@ ui <- fluidPage(
       tabsetPanel(type = "tabs",
           tabPanel("Tabla",  UItabla),
           tabPanel("Graficar", UIgraficar),
+          tabPanel("Estadísticos", UIestadisticos),
+          tabPanel("Descomposición", UIdescomposicion),
+          tabPanel("Tendencias", UItendencia),
           tabPanel("Resumen",  UIresumen)
       )
     )

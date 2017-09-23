@@ -4,10 +4,7 @@ library(shiny)
 source("R/server.R")
 source("R/ui.R")
 
-
-#file <- NULL
-#columns <- NULL
-#timeSerie <- NULL
+regresion <- NULL
 
 prueba <- function(){
   runApp(app)
