@@ -3,6 +3,7 @@
 source("R/Server/Sarchivo.R")
 source("R/Server/Sgraficar.R")
 
+
 server <- function(input, output) {
   
   # Reactive expression to generate the requested distribution ----
@@ -15,11 +16,6 @@ server <- function(input, output) {
       return(file1)
     }
     else{
-      # input$data will be NULL initially. After the user selects
-      # and uploads a file, it will be a data frame with 'name',
-      # 'size', 'type', and 'datapath' columns. The 'datapath'
-      # column will contain the local filenames where the data can
-      # be found.
       inFile <- input$data
       
       if (is.null(inFile))
@@ -28,7 +24,8 @@ server <- function(input, output) {
       file1 <<- read.csv(inFile$datapath,
                         header = input$header,
                         sep = input$sep,
-                        quote = input$quote)
+                        quote = input$quote,
+                        dec = input$dec)
       
       return (file1)
     }
@@ -43,7 +40,11 @@ server <- function(input, output) {
 
   # UIarchivo
   output$contents <- renderTable({
-    file()
+    head(file())
+  })
+  
+  output$summary <- renderPrint({
+    summary(file())
   })
   
   output$timeSeriesColumns <- renderUI({
@@ -51,9 +52,7 @@ server <- function(input, output) {
     if(!is.null(file1) && length(names(file1)) > 0) 
         selectizeInput('column', 'Columnas a graficar', choices = names(file1), multiple = TRUE)
   })
-  
-  
-
+ 
   # UIgraficar
   output$distPlot <- renderPlot({
     colRandom = c("red", "blue", "black", "green", "orange", "purple", "brown", "pink")
@@ -94,7 +93,7 @@ server <- function(input, output) {
   output$estatisticsColumnsSelect <- renderUI({
     file1 <- file()
     if(!is.null(file1) && length(names(file1)) > 0) 
-      selectizeInput('columnEstatistics', 'Columnas a graficar', choices = names(file1), multiple = FALSE)
+      selectizeInput('columnEstatistics', 'Seleccione una columna', choices = names(file1), multiple = FALSE)
   })
   
   output$acf <- renderPlot({
@@ -112,7 +111,10 @@ server <- function(input, output) {
   output$descomposeColumnsSelect <- renderUI({
     file1 <- file()
     if(!is.null(file1) && length(names(file1)) > 0) 
-      selectizeInput('columnDescompose', 'Columnas a graficar', choices = names(file1), multiple = FALSE)
+      selectizeInput('columnDescompose', 
+                     'Seleccione una columna a descomponer', 
+                     choices = names(file1), 
+                     multiple = FALSE)
   })
   
   output$descompose <- renderPlot({
@@ -135,53 +137,99 @@ server <- function(input, output) {
   output$regressionPlot <- renderPlot({
     if(!is.null(input$columnRegresion)){
       yt = timeSerie(input$columnRegresion)
-      
-      t <- seq(1:length(yt))    
+
+      t = seq(1:length(yt))  
+      lower = rep(0, length(yt))
+      upper = rep(0, length(yt))
       
       if(input$typeRegression == 'Lineal'){
         m <- lm(formula = yt ~ t)  
-      }else if(input$typeRegression == 'Cuadrática'){
+        interval <- confint(m, level = 0.9)
+        lower <- interval[1] + interval[2] * t
+        upper <- interval[3] + interval[4] * t
+      }
+      else if(input$typeRegression == 'Cuadrática'){
         tt <- t*t               
-        m  <- lm(formula = yt ~ t + tt)     
+        m  <- lm(formula = yt ~ t + tt)
+        interval <- confint(m, level = 0.9)
+        lower <- interval[1] + interval[2] * t + interval[3] * tt
+        upper <- interval[4] + interval[5] * t + interval[6] * tt
       }
       else if(input$typeRegression == 'Cúbica'){
         tt <- t*t 
         ttt <- tt*t
-        m  <- lm(formula = yt ~ t + tt + ttt)     
+        m  <- lm(formula = yt ~ t + tt + ttt)
+        interval <- confint(m, level = 0.9)
+        lower <- interval[1] + interval[2] * t + interval[3] * tt + interval[4] * ttt
+        upper <- interval[5] + interval[6] * t + interval[7] * tt + interval[8] * ttt
       }
-      
-      plot(t, yt, type = "o", lwd = 2)
-      lines(m$fitted.values, col = "red", lwd = 2)
+      else if(input$typeRegression == 'Exponencial'){
+        m <- lm(formula = log(yt) ~ t)  
+        interval <- confint(m, level = 0.9)
+        lower <- interval[1] + interval[2] * t
+        upper <- interval[3] + interval[4] * t
+      }
+      else if(input$typeRegression == 'AR'){
+        m <- ar(file()[, input$columnRegresion])
+        
+        print(length(file()[, input$columnRegresion]))
+        print(length(m$resid))
+        
+        m$fitted <- file()[, input$columnRegresion] - m$resid
+        m$resid[is.na(m$resid)] <- 0
+      }
+      else if(input$typeRegression == 'Loess'){
+        m <- loess(formula = yt ~ t)
+        
+        pred <- predict(m, se = TRUE)
+        lower <- pred$fit-1.96*pred$se.fit
+        upper <- pred$fit+1.96*pred$se.fit
+
+      }
+      else if(input$typeRegression == 'Holt-Winters'){
+        m <- HoltWinters(yt)
+      }
+  
+      if(input$typeRegression != 'Holt-Winters'){
+        plot(t, yt, type = "o", lwd = 1,  
+             ylim = c (min(yt, lower), max(yt, upper)))
+        
+        if(input$typeRegression != 'AR')
+          polygon(c(t,rev(t)),c(lower,rev(upper)),col="lightgrey",border=NA)
+  
+        lines(t, yt, type = "o", lwd = 1)
+        lines(m$fitted, col = "red", lwd = 2)
+      }
+      else{
+        plot(m)
+      }
+
       legend("topleft",           
-            c("Real","Pronóstico"), 
+            c("Real",input$typeRegression), 
             lwd = c(2, 2),                      
             col = c('black','red'),                 
             bty = "n"
       ) 
-      
+
       output$regressionParameters <- renderPrint({
         m
       })
       
       output$residualPlot <- renderPlot({
-        par(mfrow=c(2,2))
-        options(repr.plot.width=10, repr.plot.height=6)
-        r = m$residuals
-        plot(t, r, type='b', ylab='', main="Residuales", col="red")
-        abline(h=0,lty=2)               
-        plot(density(r), xlab='x', main= 'Densidad residuales', col="red")
-        qqnorm(r)               
-        qqline(r, col=2)         
-        acf(r, ci.type="ma", 60) 
+        if(input$typeRegression != 'Holt-Winters'){
+          par(mfrow=c(2,2))
+          options(repr.plot.width=10, repr.plot.height=6)
+          r = m$resid
+          plot(t, r, type='b', ylab='', main="Residuales", col="red")
+          abline(h=0,lty=2)               
+          plot(density(r), main= 'Densidad residuales', col="red")
+          qqnorm(r)               
+          qqline(r, col=2)         
+          acf(r, ci.type="ma", 60) 
+        }
       })
       
     }
   })
-  
-  
 
-  #UIresumen
-  output$summary <- renderPrint({
-    summary(file())
-  })
 }

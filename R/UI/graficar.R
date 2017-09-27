@@ -25,12 +25,12 @@ UItendencia <- {
     uiOutput("regressionColumnsSelect"),
     selectizeInput('typeRegression', 
                    'Tipo de regresión:', 
-                   choices = c("Lineal", "Cuadrática", "Cúbica"), 
+                   choices = c("Lineal", "Cuadrática", "Cúbica", "Exponencial", "AR", "Loess", "Holt-Winters"), 
                    multiple = FALSE),
     plotOutput("regressionPlot"),
     verbatimTextOutput("regressionParameters"),
     plotOutput("residualPlot"),
-    
+
     selectizeInput('randomWalk', 
                    'Paseo aleatorio', 
                    choices = c("Lineal", "Cuadrática", "Cúbica", "Global"), 

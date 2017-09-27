@@ -1,5 +1,0 @@
-UIresumen <- {
-  verbatimTextOutput("summary")
-  }
-
-
