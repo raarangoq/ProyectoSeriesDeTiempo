@@ -56,13 +56,14 @@ ui <- fluidPage(
       
       # Output: Tabset w/ plot, summary, and table ----
       tabsetPanel(type = "tabs",
-          tabPanel("Tabla",  
+          tabPanel("Datos",  
                    tableOutput("contents"),
                    verbatimTextOutput("summary")
           ),
           tabPanel("Graficar", UIgraficar),
           tabPanel("Descomposición", UIdescomposicion),
-          tabPanel("Tendencias", UItendencia),
+          tabPanel("Componentes", UItendencia),
+          tabPanel("Pronóstico", UIpronostico),
           tabPanel("Estadísticos", UIestadisticos)
       )
     )

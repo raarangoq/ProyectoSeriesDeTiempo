@@ -24,18 +24,28 @@ UItendencia <- {
   list(
     uiOutput("regressionColumnsSelect"),
     selectizeInput('typeRegression', 
-                   'Tipo de regresión:', 
-                   choices = c("Lineal", "Cuadrática", "Cúbica", "Exponencial", "AR", "Loess", "Holt-Winters"), 
+                   'Tipo de regresión:',
+                   # , "Exponencial" , "AR"
+                   choices = c("Lineal", "Cuadrática", "Cúbica", "Loess", "Holt-Winters"), 
                    multiple = FALSE),
+    numericInput('confidence', "Intervalo de confianza", value = 0.95, min = 0.05, max = 0.9999, step = 0.0001),
     plotOutput("regressionPlot"),
     verbatimTextOutput("regressionParameters"),
-    plotOutput("residualPlot"),
+    plotOutput("residualPlot")
 
-    selectizeInput('randomWalk', 
-                   'Paseo aleatorio', 
-                   choices = c("Lineal", "Cuadrática", "Cúbica", "Global"), 
+  )
+}
+
+UIpronostico <-{
+  list(
+    uiOutput("forecastColumnsSelect"),
+    selectizeInput('forecastRegression', 
+                   'Tipo de regresión:',
+                   # , "Exponencial"
+                   choices = c("Lineal", "Cuadrática", "Cúbica", "Loess", "Holt-Winters"), 
                    multiple = FALSE),
-    plotOutput("randomWalkPlot")
+    plotOutput("forecastPlot"),
+    verbatimTextOutput("accuracyForecast")
   )
 }
 

@@ -3,6 +3,7 @@
 source("R/Server/Sarchivo.R")
 source("R/Server/Sgraficar.R")
 
+library('forecast')
 
 server <- function(input, output) {
   
@@ -35,7 +36,8 @@ server <- function(input, output) {
     t <- ts(
       data = file()[, column], 
       start = c(input$start, input$startPeriod), 
-      frequency = input$frecuency )
+      frequency = input$frecuency 
+    )
   }
 
   # UIarchivo
@@ -138,20 +140,21 @@ server <- function(input, output) {
     if(!is.null(input$columnRegresion)){
       yt = timeSerie(input$columnRegresion)
 
-      t = seq(1:length(yt))  
+      t = seq(1:length(yt)) 
+
       lower = rep(0, length(yt))
       upper = rep(0, length(yt))
       
       if(input$typeRegression == 'Lineal'){
         m <- lm(formula = yt ~ t)  
-        interval <- confint(m, level = 0.9)
+        interval <- confint(m, level = input$confidence)
         lower <- interval[1] + interval[2] * t
         upper <- interval[3] + interval[4] * t
       }
       else if(input$typeRegression == 'Cuadrática'){
         tt <- t*t               
         m  <- lm(formula = yt ~ t + tt)
-        interval <- confint(m, level = 0.9)
+        interval <- confint(m, level = input$confidence)
         lower <- interval[1] + interval[2] * t + interval[3] * tt
         upper <- interval[4] + interval[5] * t + interval[6] * tt
       }
@@ -159,37 +162,29 @@ server <- function(input, output) {
         tt <- t*t 
         ttt <- tt*t
         m  <- lm(formula = yt ~ t + tt + ttt)
-        interval <- confint(m, level = 0.9)
+        interval <- confint(m, level = input$confidence)
         lower <- interval[1] + interval[2] * t + interval[3] * tt + interval[4] * ttt
         upper <- interval[5] + interval[6] * t + interval[7] * tt + interval[8] * ttt
       }
-      else if(input$typeRegression == 'Exponencial'){
-        m <- lm(formula = log(yt) ~ t)  
-        interval <- confint(m, level = 0.9)
-        lower <- interval[1] + interval[2] * t
-        upper <- interval[3] + interval[4] * t
-      }
-      else if(input$typeRegression == 'AR'){
-        m <- ar(file()[, input$columnRegresion])
-        
-        print(length(file()[, input$columnRegresion]))
-        print(length(m$resid))
-        
-        m$fitted <- file()[, input$columnRegresion] - m$resid
-        m$resid[is.na(m$resid)] <- 0
-      }
+      #else if(input$typeRegression == 'AR'){
+      #  m <- ar(file()[, input$columnRegresion])
+      #
+      #  m$fitted <- file()[, input$columnRegresion] - m$resid
+      #  m$resid[is.na(m$resid)] <- 0
+      #}
       else if(input$typeRegression == 'Loess'){
         m <- loess(formula = yt ~ t)
         
         pred <- predict(m, se = TRUE)
-        lower <- pred$fit-1.96*pred$se.fit
-        upper <- pred$fit+1.96*pred$se.fit
+        z <- qnorm((1 - input$confidence) / 2,lower.tail=FALSE)
+        lower <- pred$fit-z*pred$se.fit
+        upper <- pred$fit+z*pred$se.fit
 
       }
       else if(input$typeRegression == 'Holt-Winters'){
         m <- HoltWinters(yt)
       }
-  
+
       if(input$typeRegression != 'Holt-Winters'){
         plot(t, yt, type = "o", lwd = 1,  
              ylim = c (min(yt, lower), max(yt, upper)))
@@ -227,6 +222,80 @@ server <- function(input, output) {
           qqline(r, col=2)         
           acf(r, ci.type="ma", 60) 
         }
+      })
+    }
+  })
+  
+  
+  #UIpronostico
+  
+  output$forecastColumnsSelect <- renderUI({
+    file1 <- file()
+    if(!is.null(file1) && length(names(file1)) > 0) 
+      selectizeInput('columnForecast', 'Columna a aplicar la regresión', choices = names(file1), multiple = FALSE)
+  })
+  
+  output$forecastPlot <- renderPlot({
+    if(!is.null(input$columnForecast)){
+      yt = timeSerie(input$columnForecast)
+
+      t <- seq(1:length(yt)) 
+      tPredic <- length(yt):(length(yt) + sqrt(length(yt)))
+      ytPredic <- rep(0, length(tPredic))
+      
+      lower = rep(0, length(ytPredic))
+      upper = rep(0, length(ytPredic))
+      
+      if(input$forecastRegression == 'Lineal'){
+        m <- lm(formula = yt ~ t) 
+        ytPredic <- predict(m, data.frame(t = tPredic),type="response")
+      }
+      else if(input$forecastRegression == 'Cuadrática'){
+        tt <- t*t               
+        m  <- lm(formula = yt ~ t + tt)
+        ytPredic <- predict(m, data.frame(t = tPredic, tt = tPredic * tPredic),type="response")
+      }
+      else if(input$forecastRegression == 'Cúbica'){
+        tt <- t*t 
+        ttt <- tt*t
+        m  <- lm(formula = yt ~ t + tt + ttt)
+        ytPredic <- predict(m, data.frame(t = tPredic, tt = tPredic ^ 2, ttt = tPredic ^ 3),type="response")
+      }
+      else if(input$forecastRegression == 'Loess'){
+        m <- loess(formula = yt ~ t, control=loess.control(surface="direct"))
+        ytPredic <- predict(m, data.frame(t = tPredic), type="response")
+      }
+      else if(input$forecastRegression == 'Holt-Winters'){
+        m <- HoltWinters(yt)
+        ytPredic <- predict(m, length(ytPredic))
+      }
+      
+      for(i in 1:length(ytPredic)){
+        lower[i] <- ytPredic[i] - 2*sqrt(i)
+        upper[i] <- ytPredic[i] + 2*sqrt(i)
+      }
+      
+      if(input$forecastRegression != 'Holt-Winters'){
+        plot(t, yt, type = "o", lwd = 1, xlim= c(0, max(tPredic)), ylim = c (min(yt, lower), max(yt, upper)) )
+        polygon(c(tPredic,rev(tPredic)),c(lower,rev(upper)),col="lightgrey",border=NA)
+        lines(m$fitted, col = "red", lwd = 2)
+      }
+      else{
+        plot(m, ytPredic)
+        #polygon(c(tPredic,rev(tPredic)),c(lower,rev(upper)),col="lightgrey",border=NA)
+      }
+
+      lines(tPredic, ytPredic, col = 'blue')
+      
+      legend("topleft",           
+             c("Real",input$forecastRegression, "Predicción"), 
+             lwd = c(2, 2),                      
+             col = c('black','red', 'blue'),                 
+             bty = "n"
+      )
+      
+      output$accuracyForecast <- renderPrint({
+        accuracy(m$fit, file()[, input$columnForecast], test = 1:length(yt))
       })
       
     }
