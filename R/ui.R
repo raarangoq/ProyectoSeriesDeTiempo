@@ -1,8 +1,10 @@
 
 source("R/UI/graficar.R")
 
+library(shinythemes)
 
 ui <- fluidPage(
+  theme = shinytheme("cerulean"),
   titlePanel("ARC 0.1"),
   
   # Menú lateral, donde se carga el archivo de interés, con algunas opciones para este
@@ -44,8 +46,7 @@ ui <- fluidPage(
             multiple = FALSE
         )
       ),
-      uiOutput("timeSeriesColumns"),
-      
+
       numericInput('start', 'Inicio:', value = 1),
       numericInput('startPeriod', 'Periodo de inicio:', 1),
       numericInput('frecuency', 'Frecuencia:', 1)

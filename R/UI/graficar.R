@@ -1,5 +1,6 @@
 UIgraficar <- {
   list(
+    uiOutput("timeSeriesColumns"),
     plotOutput("distPlot")
   )
 }
@@ -44,6 +45,8 @@ UIpronostico <-{
                    # , "Exponencial"
                    choices = c("Lineal", "Cuadrática", "Cúbica", "Loess", "Holt-Winters"), 
                    multiple = FALSE),
+    sliderInput('percentil', "Porcentaje de datos para entrenar", 
+                 value = 80, min = 50, max = 90),
     plotOutput("forecastPlot"),
     verbatimTextOutput("accuracyForecast")
   )

@@ -4,6 +4,7 @@ source("R/Server/Sarchivo.R")
 source("R/Server/Sgraficar.R")
 
 library('forecast')
+library('car')
 
 server <- function(input, output) {
   
@@ -14,6 +15,7 @@ server <- function(input, output) {
     
     if(input$dataType == 'Aleatorios'){
       file1 <- data.frame(rnorm(300))
+      names(file1) <- "Aleatorio"
       return(file1)
     }
     else{
@@ -21,6 +23,8 @@ server <- function(input, output) {
       
       if (is.null(inFile))
         return(NULL)
+      
+      print(inFile$datapath)
   
       file1 <<- read.csv(inFile$datapath,
                         header = input$header,
@@ -179,7 +183,6 @@ server <- function(input, output) {
         z <- qnorm((1 - input$confidence) / 2,lower.tail=FALSE)
         lower <- pred$fit-z*pred$se.fit
         upper <- pred$fit+z*pred$se.fit
-
       }
       else if(input$typeRegression == 'Holt-Winters'){
         m <- HoltWinters(yt)
@@ -237,10 +240,19 @@ server <- function(input, output) {
   
   output$forecastPlot <- renderPlot({
     if(!is.null(input$columnForecast)){
-      yt = timeSerie(input$columnForecast)
+      originalSize <- length(file()[,input$columnForecast])
+      trainSize <- input$percentil / 100 * originalSize
+      
+      yOriginal <- timeSerie(input$columnForecast)
+      
+      yt <- ts(
+        data = file()[1:trainSize, input$columnForecast], 
+        start = c(input$start, input$startPeriod), 
+        frequency = input$frecuency 
+      )
 
       t <- seq(1:length(yt)) 
-      tPredic <- length(yt):(length(yt) + sqrt(length(yt)))
+      tPredic <- trainSize:originalSize
       ytPredic <- rep(0, length(tPredic))
       
       lower = rep(0, length(ytPredic))
@@ -268,6 +280,7 @@ server <- function(input, output) {
       else if(input$forecastRegression == 'Holt-Winters'){
         m <- HoltWinters(yt)
         ytPredic <- predict(m, length(ytPredic))
+        m <- forecast(m, length(t))
       }
       
       for(i in 1:length(ytPredic)){
@@ -275,16 +288,11 @@ server <- function(input, output) {
         upper[i] <- ytPredic[i] + 2*sqrt(i)
       }
       
-      if(input$forecastRegression != 'Holt-Winters'){
-        plot(t, yt, type = "o", lwd = 1, xlim= c(0, max(tPredic)), ylim = c (min(yt, lower), max(yt, upper)) )
-        polygon(c(tPredic,rev(tPredic)),c(lower,rev(upper)),col="lightgrey",border=NA)
-        lines(m$fitted, col = "red", lwd = 2)
-      }
-      else{
-        plot(m, ytPredic)
-        #polygon(c(tPredic,rev(tPredic)),c(lower,rev(upper)),col="lightgrey",border=NA)
-      }
-
+      plot(1:originalSize, yOriginal, type = "l", lwd = 1, ylim = c (min(yt, lower), max(yt, upper)),
+           xlab = 't', ylab = input$columnForecast)
+      polygon(c(tPredic,rev(tPredic)),c(lower,rev(upper)),col="lightgrey",border=NA)
+      lines(1:originalSize, yOriginal, type = "l", lwd = 1)
+      lines(1:length(m$fitted), m$fitted, col = "red", lwd = 2)
       lines(tPredic, ytPredic, col = 'blue')
       
       legend("topleft",           
@@ -295,7 +303,9 @@ server <- function(input, output) {
       )
       
       output$accuracyForecast <- renderPrint({
-        accuracy(m$fit, file()[, input$columnForecast], test = 1:length(yt))
+        accuracy(ytPredic, 
+                 file()[length(m$fitted):originalSize, input$columnForecast], 
+                 test = 1:length(ytPredic))
       })
       
     }
